@@ -1,5 +1,8 @@
 use self::collision::Collision;
-use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
+use std::{
+    io::Error,
+    ops::{Add, AddAssign, Neg, Sub, SubAssign},
+};
 
 pub mod collision;
 
@@ -34,16 +37,31 @@ impl<'a> Line<'a> {
         }
     }
 
-    pub fn rightest(&self) -> &'a Point {
-        &self.b
+    // Returns the right-most x-coordinate
+    pub fn rightest(&self) -> f32 {
+        self.b.x.clone()
     }
 
-    pub fn leftest(&self) -> &'a Point {
-        &self.a
+    // Returns the left-most x-coordinate
+    pub fn leftest(&self) -> f32 {
+        self.a.x.clone()
     }
 
-    pub fn get_steepness(&self) -> f32 {
-        ((self.b.y - self.a.y) / (self.b.x - self.a.x)) as f32
+    // Returns the highest y-coordinate
+    pub fn upest(&self) -> f32 {
+        f32::max(self.a.y, self.b.y)
+    }
+
+    // Returns the lowest y-coordinate
+    pub fn lowest(&self) -> f32 {
+        f32::min(self.a.y, self.b.y)
+    }
+
+    pub fn get_steepness(&self) -> Result<f32, ()> {
+        if self.b.x - self.a.x == 0.0 {
+            return Err(());
+        }
+        Ok((self.b.y - self.a.y) / (self.b.x - self.a.x))
     }
 
     pub fn get_base(&self) -> f32 {
@@ -51,41 +69,55 @@ impl<'a> Line<'a> {
     }
 
     pub fn has_collision(self, other: Line<'a>) -> Option<Collision> {
-        if self.a.x > other.b.x {
+        if self.leftest() > other.rightest()
+            || self.rightest() < other.leftest()
+            || self.upest() < other.lowest()
+            || self.lowest() > other.upest()
+        {
             return None;
         }
-
-        if self.b.x < other.a.x {
-            return None;
-        }
+        return Some(Collision::new(self, other, 0.0));
 
         // Calculate the linear-growth of the line
         let self_inc = self.get_steepness();
         let other_inc = other.get_steepness();
 
-        // Calculate the area where both lines are definied
-        let def_max = self.b.x.min(other.b.x);
-        let def_min = self.a.x.max(other.a.x);
-
-        if self_inc == other_inc {
-            if self.a.y == other.a.y {
-                return Some(Collision::new(self, other, 0.0));
+        if self_inc.is_err() && other_inc.is_err() {
+            if self.a.x.floor() == other.a.x.floor() {
+                return Some(Collision::new(self, other, self.a.x));
             }
             return None;
         }
 
-        let hit = (self.a.y - other.a.y) as f32 / (self_inc - other_inc);
+        // Calculate the len where both lines are definied
+        let def_max = self.rightest().min(other.rightest());
+        let def_min = self.leftest().max(other.leftest());
+
+        println!("Got till here {}, {}", def_min, def_max);
+        if def_max.floor() == def_min.floor() {
+            return Some(Collision::new(self, other, self.b.x));
+        }
+
+        if self_inc.unwrap() == other_inc.unwrap() {
+            if self.a.y.floor() == other.a.y.floor() {
+                return Some(Collision::new(self, other, self.a.x));
+            }
+            return None;
+        }
+
+        let hit = (self.a.y - other.a.y) / (self_inc.unwrap() - other_inc.unwrap());
         if def_max < hit || def_min > hit {
             return None;
         }
         Some(Collision::new(self, other, hit))
     }
 
-    pub fn at(&self, x: f32) -> f32 {
-        self.get_steepness() * x + self.get_base()
-    }
+    fn handle_straight(&self) {}
 
-    pub fn has_point_collision(&self, point: Point) {}
+    pub fn at(&self, x: f32) -> f32 {
+        let steepness = self.get_steepness().unwrap_or(0.0);
+        steepness * x + self.get_base()
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -180,12 +212,14 @@ pub trait Move: Shape {
     fn get_force_ref_mut(&mut self) -> &mut Vector2D;
     fn mov(&mut self, tick: f64);
     fn get_speed(&self) -> Vector2D;
+    fn get_collision_force(&self, other: &impl Move) -> Vector2D {
+        self.get_force() - other.get_force()
+    }
 }
 
 pub trait Interact<'a>: Move {
     fn collide(&mut self, other: Vector2D);
     fn has_collision(&'a self, other: &'a impl Move) -> Option<Collision>;
-    fn get_collision_force(&self, other: &impl Move) -> Vector2D;
     fn pos(&self) -> Point;
     fn bounce(&mut self);
 }

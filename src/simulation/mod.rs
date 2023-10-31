@@ -1,7 +1,9 @@
-use std::sync::Mutex;
-
-use crate::physics::{collision::Collision, Interact, Line, Move, Point, Shape, Vector2D};
+use crate::physics::{Interact, Move, Point, Vector2D};
 use bevy::prelude::*;
+
+use self::particle::Particle;
+
+pub mod particle;
 
 pub struct ParticleCollider;
 
@@ -15,21 +17,19 @@ impl Plugin for ParticleCollider {
 }
 
 fn spawn_particles(mut commands: Commands) {
-    for _ in 0..100 {
+    const paricle_size: f32 = 10.0;
+    for _ in 0..5 {
         let point = Point {
             x: rand::random::<u32>() as f32 % 500.0,
-            y: rand::random::<u32>() as f32 % 500.0,
+            y: 0.0,
         };
-        let force = Vector2D::from_parts(
-            (-20 + rand::random::<i64>() % 40) as f64,
-            (-5 + rand::random::<i64>() % 10) as f64,
-        );
+        let force = Vector2D::from_parts((-20 + rand::random::<i64>() % 40) as f64, 0.0);
         commands.spawn((
-            Particle::new(point, force, 10.0),
+            Particle::new(point, force, 10.0, paricle_size),
             SpriteBundle {
                 sprite: Sprite {
                     color: Color::rgb(0.10, 0.0, 0.75),
-                    custom_size: Some(Vec2::new(10.0, 10.0)),
+                    custom_size: Some(Vec2::new(paricle_size, paricle_size)),
                     ..default()
                 },
                 transform: Transform::from_translation(Vec3::new(point.x, point.y, 0.0)),
@@ -38,12 +38,7 @@ fn spawn_particles(mut commands: Commands) {
         ));
 
         commands.spawn(Camera2dBundle {
-            transform: Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
-            ..default()
-        });
-
-        commands.spawn(PointLightBundle {
-            transform: Transform::from_translation(Vec3::ONE * 3.0),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         });
     }
@@ -70,9 +65,10 @@ fn move_particles(
                     .has_collision(particles[y].0.as_ref())
                     .is_some()
                 {
+                    println!("\n\nCollision happened!\n\n");
                     let force = particles[i].0.get_collision_force(particles[y].0.as_ref());
+                    println!("Force {}", particles[i].0.get_force().get_x());
                     particles[i].0.collide(force);
-                    particles[y].0.collide(force);
                 }
             }
         }
@@ -83,6 +79,7 @@ fn move_particles(
                 particle.bounce();
             }
             particle.mov(tick_speed.0);
+            let pos = particle.pos();
 
             transform.translation.x = pos.x;
             transform.translation.y = pos.y;
@@ -95,75 +92,3 @@ struct TickSpeed(f64);
 
 #[derive(Resource)]
 struct ForceTimer(Timer);
-
-#[derive(Component, Clone, Copy)]
-pub struct Particle {
-    pos: Point,
-    force: Vector2D,
-    mass: f64,
-}
-
-impl Particle {
-    pub fn new(pos: Point, force: Vector2D, mass: f64) -> Self {
-        Self { pos, force, mass }
-    }
-}
-
-impl Shape for Particle {
-    fn get_mesh(&self) -> Vec<Line> {
-        vec![Line::from_points(&self.pos, &self.pos)]
-    }
-}
-
-impl Move for Particle {
-    fn get_force(&self) -> Vector2D {
-        self.force.clone()
-    }
-
-    fn get_force_ref_mut(&mut self) -> &mut Vector2D {
-        &mut self.force
-    }
-
-    fn mov(&mut self, tick: f64) {
-        let speed = self.force.as_speed(self.mass);
-        self.pos.x += (speed.get_x() * tick) as f32;
-        self.pos.y += (speed.get_y() * tick) as f32;
-    }
-
-    fn get_speed(&self) -> Vector2D {
-        self.force.as_speed(self.mass)
-    }
-}
-
-impl<'a> Interact<'a> for Particle {
-    fn collide(&mut self, other: Vector2D) {
-        self.force -= other.div(2.0);
-        // *other.get_force_ref_mut() -= total.div(2.0);
-    }
-
-    fn bounce(&mut self) {
-        self.force = -self.force;
-    }
-
-    fn get_collision_force(&self, other: &impl Move) -> Vector2D {
-        self.get_force() - other.get_force()
-    }
-
-    fn has_collision(&'a self, other: &'a impl Move) -> Option<Collision> {
-        for line in self.get_mesh() {
-            for other_line in other.get_mesh() {
-                let collision = line.clone().has_collision(other_line.clone());
-                if collision.is_none() {
-                    continue;
-                }
-
-                return collision;
-            }
-        }
-        None
-    }
-
-    fn pos(&self) -> Point {
-        self.pos.clone()
-    }
-}

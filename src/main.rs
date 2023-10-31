@@ -2,8 +2,7 @@ use bevy::prelude::*;
 
 mod physics;
 mod simulation;
-use physics::Interact;
-use simulation::{Particle, ParticleCollider};
+use simulation::ParticleCollider;
 
 fn main() {
     App::new()
