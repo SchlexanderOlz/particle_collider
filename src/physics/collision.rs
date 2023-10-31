@@ -4,11 +4,11 @@ use super::{Line, Point};
 pub struct Collision<'a> {
     line_a: &'a Line<'a>,
     line_b: &'a Line<'a>,
-    hit: f64,
+    hit: f32,
 }
 
 impl<'a> Collision<'a> {
-    pub fn new(line_a: &'a Line, line_b: &'a Line, hit: f64) -> Collision<'a> {
+    pub fn new(line_a: &'a Line, line_b: &'a Line, hit: f32) -> Collision<'a> {
         Self {
             line_a,
             line_b,
@@ -23,7 +23,7 @@ impl<'a> Collision<'a> {
         }
     }
 
-    pub fn angle(&self) -> f64 {
+    pub fn angle(&self) -> f32 {
         ((self.line_a.get_steepness() * self.hit).atan()
             - (self.line_b.get_steepness() * self.hit).atan())
         .abs()

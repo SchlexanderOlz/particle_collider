@@ -10,10 +10,10 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Point {
-    x: f64,
-    y: f64,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug)]
@@ -40,11 +40,11 @@ impl<'a> Line<'a> {
         &self.a
     }
 
-    pub fn get_steepness(&self) -> f64 {
-        ((self.b.y - self.a.y) / (self.b.x - self.a.x)) as f64
+    pub fn get_steepness(&self) -> f32 {
+        ((self.b.y - self.a.y) / (self.b.x - self.a.x)) as f32
     }
 
-    pub fn get_base(&self) -> f64 {
+    pub fn get_base(&self) -> f32 {
         self.a.y
     }
 
@@ -72,14 +72,14 @@ impl<'a> Line<'a> {
             return None;
         }
 
-        let hit = (self.a.y - other.a.y) as f64 / (self_inc - other_inc);
+        let hit = (self.a.y - other.a.y) as f32 / (self_inc - other_inc);
         if def_max < hit || def_min > hit {
             return None;
         }
         Some(Collision::new(&self, other, hit))
     }
 
-    pub fn at(&self, x: f64) -> f64 {
+    pub fn at(&self, x: f32) -> f32 {
         self.get_steepness() * x + self.get_base()
     }
 
@@ -118,9 +118,16 @@ impl Vector2D {
     }
 
     pub fn div(&mut self, scalar: f64) -> Self {
-        self.y / scalar;
-        self.x / scalar;
+        self.y /= scalar;
+        self.x /= scalar;
         self.clone()
+    }
+
+    pub fn as_speed(&self, mass: f64) -> Self {
+        Self {
+            x: self.x / mass,
+            y: self.y / mass,
+        }
     }
 }
 
@@ -147,20 +154,22 @@ impl Sub for Vector2D {
 
 impl SubAssign for Vector2D {
     fn sub_assign(&mut self, rhs: Self) {
-        self.x - rhs.x;
-        self.y - rhs.y;
+        self.x -= rhs.x;
+        self.y -= rhs.y;
     }
 }
 
 pub trait Shape {
-    fn get_mesh(&self) -> &Vec<Line>;
+    fn get_mesh(&self) -> Vec<Line>;
 }
 
 pub trait Move: Shape {
     fn get_force(&self) -> Vector2D;
     fn get_force_ref_mut(&mut self) -> &mut Vector2D;
+    fn mov(&mut self, tick: f64);
 }
 
 pub trait Interact: Move {
     fn collide(&mut self, other: &mut impl Move);
+    fn pos(&self) -> Point;
 }
