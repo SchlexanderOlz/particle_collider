@@ -1,2 +1,4 @@
 # particle_collider
-A first example of simulated physics in Rust with the help of bevy
+An example of simulated physics in Rust.
+
+Blocks collide with eachother inside of a box, which creates an environment where you can observe the always changing state of these particles.
