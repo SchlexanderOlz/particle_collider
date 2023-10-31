@@ -2,13 +2,13 @@ use super::{Line, Point};
 
 #[derive(Debug)]
 pub struct Collision<'a> {
-    line_a: &'a Line<'a>,
-    line_b: &'a Line<'a>,
+    line_a: Line<'a>,
+    line_b: Line<'a>,
     hit: f32,
 }
 
 impl<'a> Collision<'a> {
-    pub fn new(line_a: &'a Line, line_b: &'a Line, hit: f32) -> Collision<'a> {
+    pub fn new(line_a: Line<'a>, line_b: Line<'a>, hit: f32) -> Collision<'a> {
         Self {
             line_a,
             line_b,
