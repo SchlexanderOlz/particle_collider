@@ -1,5 +1,5 @@
 use self::collision::Collision;
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
 pub mod collision;
 
@@ -11,7 +11,10 @@ pub struct Point {
 
 impl Point {
     pub fn approx(&self) -> Self {
-        Self { x: self.x.floor(), y: self.y.floor() }
+        Self {
+            x: self.x.floor(),
+            y: self.y.floor(),
+        }
     }
 }
 
@@ -159,6 +162,15 @@ impl SubAssign for Vector2D {
     }
 }
 
+impl Neg for Vector2D {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        Self {
+            x: -self.x,
+            y: -self.y,
+        }
+    }
+}
 pub trait Shape {
     fn get_mesh(&self) -> Vec<Line>;
 }
@@ -175,4 +187,5 @@ pub trait Interact<'a>: Move {
     fn has_collision(&'a self, other: &'a impl Move) -> Option<Collision>;
     fn get_collision_force(&self, other: &impl Move) -> Vector2D;
     fn pos(&self) -> Point;
+    fn bounce(&mut self);
 }

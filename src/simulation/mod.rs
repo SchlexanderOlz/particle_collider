@@ -15,13 +15,13 @@ impl Plugin for ParticleCollider {
 }
 
 fn spawn_particles(mut commands: Commands) {
-    for _ in 0..10 {
+    for _ in 0..100 {
         let point = Point {
-            x: rand::random::<u32>() as f32 % 300.0,
-            y: rand::random::<u32>() as f32 % 300.0,
+            x: rand::random::<u32>() as f32 % 500.0,
+            y: rand::random::<u32>() as f32 % 500.0,
         };
         let force = Vector2D::from_parts(
-            (-10 + rand::random::<i64>() % 20) as f64,
+            (-20 + rand::random::<i64>() % 40) as f64,
             (-5 + rand::random::<i64>() % 10) as f64,
         );
         commands.spawn((
@@ -80,11 +80,7 @@ fn move_particles(
         for (mut particle, mut transform) in particles {
             let pos = particle.pos();
             if pos.x < -500.0 || pos.y < -500.0 || pos.x > 500.0 || pos.y > 500.0 {
-                let force = particle.get_force();
-                particle.collide(Vector2D::from_parts(
-                    force.get_x(),
-                    force.get_y(),
-                ));
+                particle.bounce();
             }
             particle.mov(tick_speed.0);
 
@@ -143,6 +139,10 @@ impl<'a> Interact<'a> for Particle {
     fn collide(&mut self, other: Vector2D) {
         self.force -= other.div(2.0);
         // *other.get_force_ref_mut() -= total.div(2.0);
+    }
+
+    fn bounce(&mut self) {
+        self.force = -self.force;
     }
 
     fn get_collision_force(&self, other: &impl Move) -> Vector2D {
