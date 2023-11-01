@@ -70,9 +70,14 @@ impl Move for Particle {
     }
 
     fn mov(&mut self, tick: f64) {
+        // TODO: Change how this is done
         let speed = self.force.as_speed(self.mass);
         self.pos.x += (speed.get_x() * tick) as f32;
         self.pos.y += (speed.get_y() * tick) as f32;
+        self.mesh.iter_mut().for_each(|x| {
+            x.x += (speed.get_x() * tick) as f32;
+            x.y += (speed.get_y() * tick) as f32
+        });
     }
 
     fn get_speed(&self) -> Vector2D {
@@ -82,7 +87,7 @@ impl Move for Particle {
 
 impl<'a> Interact<'a> for Particle {
     fn collide(&mut self, other: Vector2D) {
-        self.force += other.div(2.0);
+        self.force -= other;
         // *other.get_force_ref_mut() -= total.div(2.0);
     }
 

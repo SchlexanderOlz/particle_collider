@@ -76,7 +76,6 @@ impl<'a> Line<'a> {
         {
             return None;
         }
-        return Some(Collision::new(self, other, 0.0));
 
         // Calculate the linear-growth of the line
         let self_inc = self.get_steepness();
