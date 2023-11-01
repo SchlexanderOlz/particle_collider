@@ -9,15 +9,16 @@ pub struct ParticleCollider;
 
 impl Plugin for ParticleCollider {
     fn build(&self, app: &mut App) {
-        app.insert_resource(ForceTimer(Timer::from_seconds(0.01, TimerMode::Repeating)))
-            .insert_resource(TickSpeed(1.0))
+        app.insert_resource(ForceTimer(Timer::from_seconds(0.001, TimerMode::Repeating)))
+            .insert_resource(TickSpeed(0.1))
             .add_systems(Startup, spawn_particles)
             .add_systems(Update, move_particles);
     }
 }
 
 fn spawn_particles(mut commands: Commands) {
-    const paricle_size: f32 = 10.0;
+    commands.spawn(Camera2dBundle::default());
+    const PARTICLE_SIZE: f32 = 10.0;
     for _ in 0..5 {
         let point = Point {
             x: rand::random::<u32>() as f32 % 500.0,
@@ -25,22 +26,17 @@ fn spawn_particles(mut commands: Commands) {
         };
         let force = Vector2D::from_parts((-20 + rand::random::<i64>() % 40) as f64, 0.0);
         commands.spawn((
-            Particle::new(point, force, 10.0, paricle_size),
+            Particle::new(point, force, 10.0, PARTICLE_SIZE),
             SpriteBundle {
                 sprite: Sprite {
                     color: Color::rgb(0.10, 0.0, 0.75),
-                    custom_size: Some(Vec2::new(paricle_size, paricle_size)),
+                    custom_size: Some(Vec2::new(PARTICLE_SIZE, PARTICLE_SIZE)),
                     ..default()
                 },
                 transform: Transform::from_translation(Vec3::new(point.x, point.y, 0.0)),
                 ..default()
             },
         ));
-
-        commands.spawn(Camera2dBundle {
-            transform: Transform::from_xyz(0.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
-            ..default()
-        });
     }
 }
 
@@ -68,7 +64,7 @@ fn move_particles(
                     println!("\n\nCollision happened!\n\n");
                     let force = particles[i].0.get_collision_force(particles[y].0.as_ref());
                     println!("Force {}", particles[i].0.get_force().get_x());
-                    particles[i].0.collide(force);
+                    particles[i].0.collide(Vector2D::from_parts(200.0, 0.0));
                 }
             }
         }
@@ -76,7 +72,11 @@ fn move_particles(
         for (mut particle, mut transform) in particles {
             let pos = particle.pos();
             if pos.x < -500.0 || pos.y < -500.0 || pos.x > 500.0 || pos.y > 500.0 {
-                particle.bounce();
+                let force = particle.get_force();
+                particle.collide(Vector2D::from_parts(
+                    -force.get_x() * 4.0,
+                    -force.get_y() * 4.0,
+                ));
             }
             particle.mov(tick_speed.0);
             let pos = particle.pos();

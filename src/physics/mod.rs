@@ -158,6 +158,10 @@ impl Vector2D {
         }
     }
 
+    pub fn mul(&self, scalar: f64) -> Self {
+        Self { x: self.x * scalar, y: self.y * scalar }
+    }
+
     pub fn as_speed(&self, mass: f64) -> Self {
         Self {
             x: self.x / mass,

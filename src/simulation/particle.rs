@@ -82,7 +82,7 @@ impl Move for Particle {
 
 impl<'a> Interact<'a> for Particle {
     fn collide(&mut self, other: Vector2D) {
-        self.force -= other.div(2.0);
+        self.force += other.div(2.0);
         // *other.get_force_ref_mut() -= total.div(2.0);
     }
 
