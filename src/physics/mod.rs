@@ -1,12 +1,9 @@
 use self::collision::Collision;
-use std::{
-    io::Error,
-    ops::{Add, AddAssign, Neg, Sub, SubAssign},
-};
+use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
 pub mod collision;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -21,7 +18,7 @@ impl Point {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Triangle {
     pub a: Point,
     pub b: Point,
@@ -238,7 +235,7 @@ impl<'a> Line<'a> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vector2D {
     x: f64,
     y: f64,
@@ -333,17 +330,17 @@ pub trait Shape {
 }
 
 pub trait Move: Shape {
+    fn get_mass(&self) -> f64;
     fn get_force(&self) -> Vector2D;
     fn get_force_ref_mut(&mut self) -> &mut Vector2D;
     fn mov(&mut self, tick: f64);
     fn get_speed(&self) -> Vector2D;
-    fn get_collision_force(&self, other: &impl Move) -> Vector2D {
-        self.get_force() - other.get_force()
-    }
+    fn set_force(&mut self, force: Vector2D);
+    fn apply_force(&mut self, other: Vector2D);
 }
 
 pub trait Interact<'a>: Move {
-    fn collide(&mut self, other: Vector2D);
+    fn collide(&mut self, other: &'a mut impl Move);
     fn collision_with(&'a self, other: &'a impl Move) -> Vec<Collision>;
     fn pos(&self) -> Point;
     fn bounce(&mut self);

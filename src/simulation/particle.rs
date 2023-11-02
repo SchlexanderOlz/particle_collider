@@ -3,7 +3,7 @@ use crate::physics::{
 };
 use bevy::prelude::*;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, PartialEq)]
 pub struct Particle {
     pos: Point,
     mesh: [Triangle; 2],
@@ -13,7 +13,7 @@ pub struct Particle {
 
 impl Particle {
     pub fn new(pos: Point, force: Vector2D, mass: f64, size: f32) -> Self {
-        // Uper left
+        // Upper left
         let a = Point {
             x: pos.x - size / 2.0,
             y: pos.y + size / 2.0,
@@ -83,12 +83,27 @@ impl Move for Particle {
     fn get_speed(&self) -> Vector2D {
         self.force.as_speed(self.mass)
     }
+
+    fn get_mass(&self) -> f64 {
+        self.mass
+    }
+
+    fn set_force(&mut self, force: Vector2D) {
+        self.force = force
+    }
+
+    fn apply_force(&mut self, other: Vector2D) {
+        self.force += other;
+    }
 }
 
 impl<'a> Interact<'a> for Particle {
-    fn collide(&mut self, other: Vector2D) {
-        self.force -= other;
-        // *other.get_force_ref_mut() -= total.div(2.0);
+    fn collide(&mut self, other: &'a mut impl Move) {
+        let mass = self.get_mass() + other.get_mass();
+        let total_speed = (self.get_force() + other.get_force()).div(mass);
+        let diff = self.force - total_speed.mul(self.get_mass());
+        self.force = total_speed.mul(self.get_mass());
+        other.set_force(other.get_force() + diff);
     }
 
     fn bounce(&mut self) {

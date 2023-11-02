@@ -1,9 +1,13 @@
+use std::cell::RefCell;
+
 use crate::physics::{Interact, Move, Point, Vector2D};
 use bevy::prelude::*;
 
 use self::particle::Particle;
 
 pub mod particle;
+
+const GAME_SIZE: f32 = 300.0;
 
 pub struct ParticleCollider;
 
@@ -27,12 +31,12 @@ fn spawn_particles(mut commands: Commands) {
     const PARTICLE_SIZE: f32 = 20.0;
     for _ in 0..50 {
         let point = Point {
-            x: -300.0 + rand::random::<u32>() as f32 % 600.0,
-            y: -300.0 + rand::random::<u32>() as f32 % 600.0,
+            x: -GAME_SIZE + rand::random::<u32>() as f32 % GAME_SIZE * 2.0,
+            y: -GAME_SIZE + rand::random::<u32>() as f32 % GAME_SIZE * 2.0,
         };
         let force = Vector2D::from_parts(
-            (-50 + rand::random::<i64>() % 100) as f64,
-            (-50 + rand::random::<i64>() % 100) as f64,
+            (-500 + rand::random::<i64>() % 1000) as f64,
+            (-500 + rand::random::<i64>() % 1000) as f64,
         );
         commands.spawn((
             Particle::new(
@@ -61,38 +65,35 @@ fn move_particles(
     mut query: Query<(&mut Particle, &mut Transform)>,
 ) {
     if timer.0.tick(time.delta()).just_finished() {
-        let mut particles: Vec<(Mut<'_, Particle>, Mut<'_, Transform>)> =
-            query.iter_mut().collect();
+        let view: Vec<_> = query.iter_mut().map(|x| RefCell::new(x.0)).collect();
 
-        for i in 0..particles.len() {
-            for y in 0..particles.len() {
-                if i == y {
+        for other in &view {
+            for particle in &view {
+                if particle.borrow().as_ref() == other.borrow().as_ref() {
                     continue;
                 }
 
-                if !particles[i]
-                    .0
-                    .collision_with(particles[y].0.as_ref())
+                if !particle
+                    .borrow()
+                    .collision_with(other.borrow().as_ref())
                     .is_empty()
                 {
                     println!("\n\nCollision happened!\n\n");
-                    let force = particles[i].0.get_collision_force(particles[y].0.as_ref());
-                    println!("Force {}", particles[i].0.get_force().get_x());
-                    particles[i].0.collide(force);
+                    particle.borrow_mut().collide(other.borrow_mut().as_mut());
                 }
             }
         }
 
-        for (mut particle, mut transform) in particles {
+        for (mut particle, mut transform) in &mut query {
             let pos = particle.pos();
 
             let force = particle.get_force();
-            if pos.x < -300.0 || pos.x > 300.0 {
-                particle.collide(Vector2D::from_parts(force.get_x() * 2.0, 0.0));
+            if pos.x < -GAME_SIZE || pos.x > GAME_SIZE {
+                particle.apply_force(Vector2D::from_parts(-force.get_x() * 2.0, 0.0));
             }
 
-            if pos.y > 300.0 || pos.y < -300.0 {
-                particle.collide(Vector2D::from_parts(0.0, force.get_y() * 2.0))
+            if pos.y > GAME_SIZE || pos.y < -GAME_SIZE {
+                particle.apply_force(Vector2D::from_parts(0.0, -force.get_y() * 2.0))
             }
             particle.mov(tick_speed.0);
             let pos = particle.pos();
