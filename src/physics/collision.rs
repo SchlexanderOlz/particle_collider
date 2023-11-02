@@ -23,10 +23,7 @@ impl<'a> Collision<'a> {
         }
     }
 
-    pub fn angle(&self) -> Result<f32, ()> {
-        Ok(((self.line_a.get_steepness()? * self.hit).atan()
-            - (self.line_b.get_steepness()? * self.hit).atan())
-        .abs()
-        .to_degrees())
+    pub fn angle(&self) -> f32 {
+        (self.line_a.angle() - self.line_b.angle()).abs()
     }
 }

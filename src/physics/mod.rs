@@ -58,12 +58,17 @@ impl Triangle {
     }
 
     #[inline]
-    pub fn get_points(&self) -> [&Point; 3] {
+    pub fn points(&self) -> [&Point; 3] {
         [&self.a, &self.b, &self.c]
     }
 
     #[inline]
-    pub fn get_lines(&self) -> [Line; 3] {
+    pub fn points_mut(&mut self) -> [&mut Point; 3] {
+        [&mut self.a, &mut self.b, &mut self.c]
+    }
+
+    #[inline]
+    pub fn lines(&self) -> [Line; 3] {
         [
             Line::from_points(&self.a, &self.b),
             Line::from_points(&self.b, &self.c),
@@ -71,21 +76,22 @@ impl Triangle {
         ]
     }
 
-    pub fn has_collisions<'a>(&'a self, other: &'a Self) -> Vec<Collision<'a>> {
-        let lines = self.get_lines();
-        let mesh = other.get_points();
+    pub fn get_collisions<'a>(&'a self, other: &'a Self) -> Vec<Collision<'a>> {
+        let lines = self.lines();
+        let mesh = other.points();
 
         let mut collisions: Vec<Collision<'a>> = Vec::new();
 
         'other: for point in mesh {
             let check = |point_line, angle, base_line| {
                 let line = Line::from_points(point_line, &point);
-                let collision = match line.has_collision(base_line) {
+                let collision = match line.collision_with(base_line) {
                     None => return true,
                     Some(coll) => coll,
                 };
 
-                if collision.angle().unwrap() >= angle {
+                // Fix this by directly returning 90 or 180 or 0 in collision.angle()
+                if collision.angle() >= angle {
                     return true;
                 }
                 false
@@ -94,17 +100,17 @@ impl Triangle {
             for i in 0..lines.len() {
                 let line = lines[i];
                 let angle = line
-                    .has_collision(lines[(i + 1) % (lines.len() - 1)])
+                    .collision_with(lines[(i + 1) % (lines.len() - 1)])
                     .unwrap()
-                    .angle()
-                    .unwrap();
-                if check(&self.get_points()[i], angle, line) {
+                    .angle();
+                println!("{}", angle);
+                if check(&self.points()[i], angle, line) {
                     continue 'other;
                 }
             }
 
-            for line in other.get_lines() {
-                let mut check = |point_line| match line.has_collision(point_line) {
+            for line in other.lines() {
+                let mut check = |point_line| match line.collision_with(point_line) {
                     None => (),
                     Some(coll) => collisions.push(coll),
                 };
@@ -135,37 +141,53 @@ impl<'a> Line<'a> {
     }
 
     // Returns the right-most x-coordinate
+    #[inline]
     pub fn rightest(&self) -> f32 {
-        self.b.x.clone()
+        self.b.x
     }
 
     // Returns the left-most x-coordinate
+    #[inline]
     pub fn leftest(&self) -> f32 {
-        self.a.x.clone()
+        self.a.x
     }
 
     // Returns the highest y-coordinate
+    #[inline]
     pub fn upest(&self) -> f32 {
         f32::max(self.a.y, self.b.y)
     }
 
     // Returns the lowest y-coordinate
+    #[inline]
     pub fn lowest(&self) -> f32 {
         f32::min(self.a.y, self.b.y)
     }
 
+    #[inline]
     pub fn get_steepness(&self) -> Result<f32, ()> {
-        if self.b.x - self.a.x == 0.0 {
+        if (self.rightest() - self.leftest()).floor() == 0.0 {
             return Err(());
         }
-        Ok((self.b.y - self.a.y) / (self.b.x - self.a.x))
+        Ok((self.b.y - self.a.y) / (self.rightest() - self.leftest()))
     }
 
+    #[inline]
     pub fn get_base(&self) -> f32 {
         self.a.y
     }
 
-    pub fn has_collision(self, other: Line<'a>) -> Option<Collision> {
+    pub fn angle(&self) -> f32 {
+        if (self.rightest() - self.leftest()).floor() == 0.0 {
+            return 90.0;
+        }
+        ((self.b.y - self.a.y) / (self.rightest() - self.leftest()))
+            .abs()
+            .atan()
+            .to_degrees()
+    }
+
+    pub fn collision_with(self, other: Line<'a>) -> Option<Collision> {
         if self.leftest() > other.rightest()
             || self.rightest() < other.leftest()
             || self.upest() < other.lowest()
@@ -179,7 +201,7 @@ impl<'a> Line<'a> {
         let other_inc = other.get_steepness();
 
         if self_inc.is_err() && other_inc.is_err() {
-            if self.a.x.floor() == other.a.x.floor() {
+            if self.a.x.round() == other.a.x.round() {
                 return Some(Collision::new(self, other, self.a.x));
             }
             return None;
@@ -188,13 +210,19 @@ impl<'a> Line<'a> {
         // Calculate the len where both lines are definied
         let def_max = self.rightest().min(other.rightest());
         let def_min = self.leftest().max(other.leftest());
+        let def_area = def_min - def_max;
 
-        println!("Got till here {}, {}", def_min, def_max);
-        if def_max.floor() == def_min.floor() {
+
+        if def_max.round() == def_min.round() {
             return Some(Collision::new(self, other, self.b.x));
         }
 
-        if self_inc.unwrap() == other_inc.unwrap() {
+        if self_inc.is_err() || other_inc.is_err() {
+            return None;
+        }
+
+        // This should be floored but causes problems currently
+        if self_inc.unwrap().round() == other_inc.unwrap().round() {
             if self.a.y.floor() == other.a.y.floor() {
                 return Some(Collision::new(self, other, self.a.x));
             }
@@ -202,7 +230,10 @@ impl<'a> Line<'a> {
         }
 
         let hit = (self.a.y - other.a.y) / (self_inc.unwrap() - other_inc.unwrap());
-        if def_max < hit || def_min > hit {
+        println!("{}", hit);
+        println!("{}", def_area.floor());
+
+        if hit < def_area.floor() || hit > 0.0 {
             return None;
         }
         Some(Collision::new(self, other, hit))
@@ -307,7 +338,7 @@ impl Neg for Vector2D {
     }
 }
 pub trait Shape {
-    fn get_mesh(&self) -> Vec<Line>;
+    fn get_mesh(&self) -> &[Triangle];
 }
 
 pub trait Move: Shape {
@@ -322,7 +353,7 @@ pub trait Move: Shape {
 
 pub trait Interact<'a>: Move {
     fn collide(&mut self, other: Vector2D);
-    fn has_collision(&'a self, other: &'a impl Move) -> Option<Collision>;
+    fn collision_with(&'a self, other: &'a impl Move) -> Vec<Collision>;
     fn pos(&self) -> Point;
     fn bounce(&mut self);
 }

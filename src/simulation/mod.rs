@@ -24,15 +24,15 @@ fn spawn_particles(mut commands: Commands) {
         transform: Transform::from_xyz(0.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
-    const PARTICLE_SIZE: f32 = 10.0;
-    for _ in 0..100 {
+    const PARTICLE_SIZE: f32 = 20.0;
+    for _ in 0..50 {
         let point = Point {
             x: -300.0 + rand::random::<u32>() as f32 % 600.0,
             y: -300.0 + rand::random::<u32>() as f32 % 600.0,
         };
         let force = Vector2D::from_parts(
-            (-500 + rand::random::<i64>() % 1000) as f64,
-            (-500 + rand::random::<i64>() % 1000) as f64,
+            (-50 + rand::random::<i64>() % 100) as f64,
+            (-50 + rand::random::<i64>() % 100) as f64,
         );
         commands.spawn((
             Particle::new(
@@ -70,10 +70,10 @@ fn move_particles(
                     continue;
                 }
 
-                if particles[i]
+                if !particles[i]
                     .0
-                    .has_collision(particles[y].0.as_ref())
-                    .is_some()
+                    .collision_with(particles[y].0.as_ref())
+                    .is_empty()
                 {
                     println!("\n\nCollision happened!\n\n");
                     let force = particles[i].0.get_collision_force(particles[y].0.as_ref());

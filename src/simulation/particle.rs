@@ -1,10 +1,12 @@
-use crate::physics::{collision::Collision, Interact, Line, Move, Point, Shape, Vector2D};
+use crate::physics::{
+    collision::Collision, Interact, Line, Move, Point, Shape, Triangle, Vector2D,
+};
 use bevy::prelude::*;
 
 #[derive(Component, Clone)]
 pub struct Particle {
     pos: Point,
-    mesh: Vec<Point>,
+    mesh: [Triangle; 2],
     force: Vector2D,
     mass: f64,
 }
@@ -35,28 +37,23 @@ impl Particle {
             y: pos.y - size / 2.0,
         };
 
+        let mesh = [
+            Triangle::from_points(a, b, d),
+            Triangle::from_points(a, c, d),
+        ];
+
         Self {
             pos,
             force,
             mass,
-            mesh: vec![a, b, c, d],
+            mesh,
         }
     }
 }
 
 impl Shape for Particle {
-    fn get_mesh(&self) -> Vec<Line> {
-        let mut lines: Vec<Line> = self
-            .mesh
-            .windows(2)
-            .map(|pair| Line::from_points(&pair[0], &pair[1]))
-            .collect();
-
-        lines.push(Line::from_points(
-            self.mesh.first().unwrap(),
-            self.mesh.last().unwrap(),
-        ));
-        lines
+    fn get_mesh(&self) -> &[Triangle] {
+        &self.mesh
     }
 }
 
@@ -71,12 +68,15 @@ impl Move for Particle {
 
     fn mov(&mut self, tick: f64) {
         // TODO: Change how this is done
-        let speed = self.force.as_speed(self.mass);
+        let speed = self.get_speed();
         self.pos.x += (speed.get_x() * tick) as f32;
         self.pos.y += (speed.get_y() * tick) as f32;
-        self.mesh.iter_mut().for_each(|x| {
-            x.x += (speed.get_x() * tick) as f32;
-            x.y += (speed.get_y() * tick) as f32
+
+        self.mesh.iter_mut().for_each(|triangle| {
+            triangle.points_mut().iter_mut().for_each(|point| {
+                point.x += (speed.get_x() * tick) as f32;
+                point.y += (speed.get_y() * tick) as f32;
+            });
         });
     }
 
@@ -95,18 +95,15 @@ impl<'a> Interact<'a> for Particle {
         self.force = -self.force;
     }
 
-    fn has_collision(&'a self, other: &'a impl Move) -> Option<Collision> {
-        for line in self.get_mesh() {
-            for other_line in other.get_mesh() {
-                let collision = line.clone().has_collision(other_line.clone());
-                if collision.is_none() {
-                    continue;
-                }
-
-                return collision;
+    fn collision_with(&'a self, other: &'a impl Move) -> Vec<Collision> {
+        let mut all_collisions = Vec::new();
+        for triangle in self.get_mesh() {
+            for other_triangle in other.get_mesh() {
+                let collisions = triangle.get_collisions(other_triangle);
+                all_collisions.extend(collisions);
             }
         }
-        None
+        all_collisions
     }
 
     fn pos(&self) -> Point {
