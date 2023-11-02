@@ -22,6 +22,103 @@ impl Point {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct Triangle {
+    pub a: Point,
+    pub b: Point,
+    pub c: Point,
+}
+
+impl Triangle {
+    pub fn from_points(a: Point, b: Point, c: Point) -> Self {
+        Self { a, b, c }
+    }
+
+    // Returns the right-most x-coordinate
+    #[inline]
+    pub fn rightest(&self) -> f32 {
+        self.a.x.max(self.b.x).max(self.c.x)
+    }
+
+    // Returns the left-most x-coordinate
+    #[inline]
+    pub fn leftest(&self) -> f32 {
+        self.a.x.min(self.b.x).min(self.c.x)
+    }
+
+    // Returns the highest y-coordinate
+    #[inline]
+    pub fn upest(&self) -> f32 {
+        self.a.y.max(self.b.y).max(self.c.y)
+    }
+
+    // Returns the lowest y-coordinate
+    #[inline]
+    pub fn lowest(&self) -> f32 {
+        self.a.y.min(self.b.y).min(self.c.y)
+    }
+
+    #[inline]
+    pub fn get_points(&self) -> [&Point; 3] {
+        [&self.a, &self.b, &self.c]
+    }
+
+    #[inline]
+    pub fn get_lines(&self) -> [Line; 3] {
+        [
+            Line::from_points(&self.a, &self.b),
+            Line::from_points(&self.b, &self.c),
+            Line::from_points(&self.c, &self.a),
+        ]
+    }
+
+    pub fn has_collisions<'a>(&'a self, other: &'a Self) -> Vec<Collision<'a>> {
+        let lines = self.get_lines();
+        let mesh = other.get_points();
+
+        let mut collisions: Vec<Collision<'a>> = Vec::new();
+
+        'other: for point in mesh {
+            let check = |point_line, angle, base_line| {
+                let line = Line::from_points(point_line, &point);
+                let collision = match line.has_collision(base_line) {
+                    None => return true,
+                    Some(coll) => coll,
+                };
+
+                if collision.angle().unwrap() >= angle {
+                    return true;
+                }
+                false
+            };
+
+            for i in 0..lines.len() {
+                let line = lines[i];
+                let angle = line
+                    .has_collision(lines[(i + 1) % (lines.len() - 1)])
+                    .unwrap()
+                    .angle()
+                    .unwrap();
+                if check(&self.get_points()[i], angle, line) {
+                    continue 'other;
+                }
+            }
+
+            for line in other.get_lines() {
+                let mut check = |point_line| match line.has_collision(point_line) {
+                    None => (),
+                    Some(coll) => collisions.push(coll),
+                };
+
+                for line in lines {
+                    check(line);
+                }
+            }
+        }
+        collisions
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Line<'a> {
     pub a: &'a Point,
     pub b: &'a Point,
@@ -158,7 +255,10 @@ impl Vector2D {
     }
 
     pub fn mul(&self, scalar: f64) -> Self {
-        Self { x: self.x * scalar, y: self.y * scalar }
+        Self {
+            x: self.x * scalar,
+            y: self.y * scalar,
+        }
     }
 
     pub fn as_speed(&self, mass: f64) -> Self {

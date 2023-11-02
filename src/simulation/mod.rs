@@ -9,10 +9,13 @@ pub struct ParticleCollider;
 
 impl Plugin for ParticleCollider {
     fn build(&self, app: &mut App) {
-        app.insert_resource(ForceTimer(Timer::from_seconds(0.001, TimerMode::Repeating)))
-            .insert_resource(TickSpeed(0.1))
-            .add_systems(Startup, spawn_particles)
-            .add_systems(Update, move_particles);
+        app.insert_resource(ForceTimer(Timer::from_seconds(
+            1.0 / 60.0,
+            TimerMode::Repeating,
+        )))
+        .insert_resource(TickSpeed(0.1))
+        .add_systems(Startup, spawn_particles)
+        .add_systems(Update, move_particles);
     }
 }
 
@@ -28,8 +31,8 @@ fn spawn_particles(mut commands: Commands) {
             y: -300.0 + rand::random::<u32>() as f32 % 600.0,
         };
         let force = Vector2D::from_parts(
-            (-50 + rand::random::<i64>() % 100) as f64,
-            (-50 + rand::random::<i64>() % 100) as f64,
+            (-500 + rand::random::<i64>() % 1000) as f64,
+            (-500 + rand::random::<i64>() % 1000) as f64,
         );
         commands.spawn((
             Particle::new(
