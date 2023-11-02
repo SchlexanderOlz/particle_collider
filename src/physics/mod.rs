@@ -82,31 +82,23 @@ impl Triangle {
 
         let mut collisions: Vec<Collision<'a>> = Vec::new();
 
-        'other: for point in mesh {
-            let check = |point_line, angle, base_line| {
-                let line = Line::from_points(point_line, &point);
-                let collision = match line.collision_with(base_line) {
-                    None => return true,
-                    Some(coll) => coll,
-                };
+        for point in mesh {
+            // This calculates if the point is inside of this triangle by using
+            // barycentric coordinates
+            let alpha = ((self.b.y - self.c.y) * (point.x - self.c.x)
+                + (self.c.x - self.b.x) * (point.y - self.c.y))
+                / ((self.b.y - self.c.y) * (self.a.x - self.c.x)
+                    + (self.c.x - self.b.x) * (self.a.y - self.c.y));
+            let beta = ((self.c.y - self.a.y) * (point.x - self.c.x)
+                + (self.a.x - self.c.x) * (point.y - self.c.y))
+                / ((self.b.y - self.c.y) * (self.a.x - self.c.x)
+                    + (self.c.x - self.b.x) * (self.a.y - self.c.y));
+            let gamma = 1.0 - alpha - beta;
 
-                // Fix this by directly returning 90 or 180 or 0 in collision.angle()
-                if collision.angle() >= angle {
-                    return true;
-                }
-                false
-            };
+            let is_inside = alpha >= 0.0 && beta >= 0.0 && gamma >= 0.0;
 
-            for i in 0..lines.len() {
-                let line = lines[i];
-                let angle = line
-                    .collision_with(lines[(i + 1) % (lines.len() - 1)])
-                    .unwrap()
-                    .angle();
-                println!("{}", angle);
-                if check(&self.points()[i], angle, line) {
-                    continue 'other;
-                }
+            if is_inside {
+                continue;
             }
 
             for line in other.lines() {
@@ -211,7 +203,6 @@ impl<'a> Line<'a> {
         let def_max = self.rightest().min(other.rightest());
         let def_min = self.leftest().max(other.leftest());
         let def_area = def_min - def_max;
-
 
         if def_max.round() == def_min.round() {
             return Some(Collision::new(self, other, self.b.x));
