@@ -1,9 +1,8 @@
-use std::cell::RefCell;
-
-use crate::physics::{Interact, Move, Point, Vector2D};
-use bevy::{prelude::*, utils::HashSet};
-
 use self::particle::Particle;
+use crate::physics::{Interact, Move, Point, Vector2D};
+use bevy::prelude::*;
+use rand::Rng;
+use std::cell::RefCell;
 
 pub mod particle;
 
@@ -28,15 +27,21 @@ fn spawn_particles(mut commands: Commands) {
         transform: Transform::from_xyz(0.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
+    let mut random = rand::thread_rng();
     const PARTICLE_SIZE: f32 = 20.0;
-    for _ in 0..5 {
+    for _ in 0..20 {
+        let mut rand = || -GAME_SIZE + random.gen::<u32>() as f32 % GAME_SIZE * 2.0;
+
         let point = Point {
-            x: -GAME_SIZE + rand::random::<u32>() as f32 % GAME_SIZE * 2.0,
-            y: 0.0,
+            x: rand(),
+            y: rand(),
         };
-        let force = Vector2D::from_parts((-50 + rand::random::<i64>() % 100) as f64, 0.0);
+
+        let mut rand = || (-50 + random.gen::<i64>() % 100) as f64;
+
+        let force = Vector2D::new(rand(), rand());
         commands.spawn((
-            Particle::new(point, force, 5.0, PARTICLE_SIZE),
+            Particle::new(point, force, 5.0 + random.gen::<f64>() % 5.0, PARTICLE_SIZE),
             SpriteBundle {
                 sprite: Sprite {
                     color: Color::rgb(0.10, 0.0, 0.75),
@@ -56,46 +61,47 @@ fn move_particles(
     tick_speed: Res<TickSpeed>,
     mut query: Query<(&mut Particle, &mut Transform)>,
 ) {
-    if timer.0.tick(time.delta()).just_finished() {
-        let view: Vec<_> = query.iter_mut().map(|x| RefCell::new(x.0)).collect();
+    if !timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+    let view: Vec<_> = query.iter_mut().map(|x| RefCell::new(x.0)).collect();
 
-        for i in 0..view.len() {
-            for j in i + 1..view.len() {
-                let other = &view[i];
-                let particle = &view[j];
+    for i in 0..view.len() {
+        for j in i + 1..view.len() {
+            let other = &view[i];
+            let particle = &view[j];
 
-                if particle.borrow().as_ref() == other.borrow().as_ref() {
-                    continue;
-                }
+            if particle.borrow().as_ref() == other.borrow().as_ref() {
+                continue;
+            }
 
-                if !particle
-                    .borrow()
-                    .collision_with(other.borrow().as_ref())
-                    .is_empty()
-                {
-                    println!("\n\nCollision happened!\n\n");
-                    particle.borrow_mut().collide(other.borrow_mut().as_mut());
-                }
+            // TODO: Add advanced collision checking here
+            if !particle
+                .borrow()
+                .collision_with(other.borrow().as_ref())
+                .is_empty()
+            {
+                particle.borrow_mut().collide(other.borrow_mut().as_mut());
             }
         }
+    }
 
-        for (mut particle, mut transform) in &mut query {
-            let pos = particle.pos();
+    for (mut particle, mut transform) in &mut query {
+        let pos = particle.get_pos();
 
-            let force = particle.get_force();
-            if pos.x < -GAME_SIZE || pos.x > GAME_SIZE {
-                particle.apply_force(Vector2D::from_parts(-force.get_x() * 2.0, 0.0));
-            }
-
-            if pos.y > GAME_SIZE || pos.y < -GAME_SIZE {
-                particle.apply_force(Vector2D::from_parts(0.0, -force.get_y() * 2.0))
-            }
-            particle.mov(tick_speed.0);
-            let pos = particle.pos();
-
-            transform.translation.x = pos.x;
-            transform.translation.y = pos.y;
+        let force = particle.get_force();
+        if pos.x < -GAME_SIZE || pos.x > GAME_SIZE {
+            particle.set_force(Vector2D::new(-force.get_x(), force.get_y()));
         }
+
+        if pos.y > GAME_SIZE || pos.y < -GAME_SIZE {
+            particle.set_force(Vector2D::new(force.get_x(), -force.get_y()));
+        }
+        particle.mov(tick_speed.0);
+        let pos = particle.get_pos();
+
+        transform.translation.x = pos.x;
+        transform.translation.y = pos.y;
     }
 }
 
