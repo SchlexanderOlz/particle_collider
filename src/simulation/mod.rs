@@ -28,8 +28,7 @@ fn spawn_particles(mut commands: Commands) {
         ..default()
     });
     let mut random = rand::thread_rng();
-    const PARTICLE_SIZE: f32 = 20.0;
-    for _ in 0..20 {
+    for _ in 0..100 {
         let mut rand = || -GAME_SIZE + random.gen::<u32>() as f32 % GAME_SIZE * 2.0;
 
         let point = Point {
@@ -40,12 +39,13 @@ fn spawn_particles(mut commands: Commands) {
         let mut rand = || (-50 + random.gen::<i64>() % 100) as f64;
 
         let force = Vector2D::new(rand(), rand());
+        let particle_size = 10.0 + random.gen::<u32>() as f32 % 5.0;
         commands.spawn((
-            Particle::new(point, force, 5.0 + random.gen::<f64>() % 5.0, PARTICLE_SIZE),
+            Particle::new(point, force, particle_size as f64, particle_size),
             SpriteBundle {
                 sprite: Sprite {
                     color: Color::rgb(0.10, 0.0, 0.75),
-                    custom_size: Some(Vec2::new(PARTICLE_SIZE, PARTICLE_SIZE)),
+                    custom_size: Some(Vec2::new(particle_size, particle_size)),
                     ..default()
                 },
                 transform: Transform::from_translation(Vec3::new(point.x, point.y, 0.0)),

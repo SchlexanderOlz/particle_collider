@@ -360,6 +360,7 @@ pub trait Interact<'a>: Move {
         let diff = self.get_speed() - other.get_speed();
         let v2 = -diff.div(other.get_mass() / self.get_mass());
         let v1 = diff + v2;
+
         self.set_force(other.get_force() - v1.mul(self.get_mass()));
         other.set_force(-self.get_force() + v2.mul(other.get_mass()));
     }
