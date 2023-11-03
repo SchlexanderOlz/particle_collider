@@ -84,6 +84,11 @@ impl Move for Particle {
         self.force.as_speed(self.mass)
     }
 
+    fn set_position(&mut self, pos: Point) {
+        self.pos.x = pos.x;
+        self.pos.y = pos.y;
+    }
+
     fn get_mass(&self) -> f64 {
         self.mass
     }
@@ -99,11 +104,13 @@ impl Move for Particle {
 
 impl<'a> Interact<'a> for Particle {
     fn collide(&mut self, other: &'a mut impl Move) {
-        let mass = self.get_mass() + other.get_mass();
-        let total_speed = (self.get_force() + other.get_force()).div(mass);
-        let diff = self.force - total_speed.mul(self.get_mass());
-        self.force = total_speed.mul(self.get_mass());
-        other.set_force(other.get_force() + diff);
+        let diff = self.get_speed() - other.get_speed();
+        let v1 = diff - diff.div(other.get_mass() / self.get_mass());
+        let v2 = -diff + diff.div(other.get_mass() / self.get_mass());
+        println!("1: {}", v1.get_x());
+        println!("2: {}", v2.get_x());
+        self.force = -self.force + v1.mul(self.mass);
+        other.set_force(-other.get_force() + v2.mul(other.get_mass()));
     }
 
     fn bounce(&mut self) {

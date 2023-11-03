@@ -1,4 +1,5 @@
 use self::collision::Collision;
+use std::cmp::PartialOrd;
 use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
 pub mod collision;
@@ -280,6 +281,14 @@ impl Vector2D {
         }
     }
 
+    pub fn angle(&self) -> f64 {
+        f64::atan(self.x / self.y).to_degrees()
+    }
+
+    pub fn as_polar(&self) -> (f64, f64) {
+        ((self.x.powi(2) + self.y.powi(2)).sqrt(), self.angle())
+    }
+
     pub fn as_speed(&self, mass: f64) -> Self {
         Self {
             x: self.x / mass,
@@ -325,6 +334,7 @@ impl Neg for Vector2D {
         }
     }
 }
+
 pub trait Shape {
     fn get_mesh(&self) -> &[Triangle];
 }
@@ -336,6 +346,7 @@ pub trait Move: Shape {
     fn mov(&mut self, tick: f64);
     fn get_speed(&self) -> Vector2D;
     fn set_force(&mut self, force: Vector2D);
+    fn set_position(&mut self, pos: Point);
     fn apply_force(&mut self, other: Vector2D);
 }
 

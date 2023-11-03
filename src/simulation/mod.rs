@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use crate::physics::{Interact, Move, Point, Vector2D};
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashSet};
 
 use self::particle::Particle;
 
@@ -29,22 +29,14 @@ fn spawn_particles(mut commands: Commands) {
         ..default()
     });
     const PARTICLE_SIZE: f32 = 20.0;
-    for _ in 0..50 {
+    for _ in 0..5 {
         let point = Point {
             x: -GAME_SIZE + rand::random::<u32>() as f32 % GAME_SIZE * 2.0,
-            y: -GAME_SIZE + rand::random::<u32>() as f32 % GAME_SIZE * 2.0,
+            y: 0.0,
         };
-        let force = Vector2D::from_parts(
-            (-500 + rand::random::<i64>() % 1000) as f64,
-            (-500 + rand::random::<i64>() % 1000) as f64,
-        );
+        let force = Vector2D::from_parts((-50 + rand::random::<i64>() % 100) as f64, 0.0);
         commands.spawn((
-            Particle::new(
-                point,
-                force,
-                1.0 + rand::random::<u32>() as f64 % 50.0,
-                PARTICLE_SIZE,
-            ),
+            Particle::new(point, force, 5.0, PARTICLE_SIZE),
             SpriteBundle {
                 sprite: Sprite {
                     color: Color::rgb(0.10, 0.0, 0.75),
@@ -67,8 +59,11 @@ fn move_particles(
     if timer.0.tick(time.delta()).just_finished() {
         let view: Vec<_> = query.iter_mut().map(|x| RefCell::new(x.0)).collect();
 
-        for other in &view {
-            for particle in &view {
+        for i in 0..view.len() {
+            for j in i + 1..view.len() {
+                let other = &view[i];
+                let particle = &view[j];
+
                 if particle.borrow().as_ref() == other.borrow().as_ref() {
                     continue;
                 }
