@@ -357,12 +357,24 @@ pub trait Move: Shape {
 
 pub trait Interact<'a>: Move {
     fn collide(&mut self, other: &'a mut impl Move) {
-        let diff = self.get_speed() - other.get_speed();
-        let v2 = -diff.div(other.get_mass() / self.get_mass());
-        let v1 = diff + v2;
+        let before = self.get_force().as_polar().0.abs() + other.get_force().as_polar().0.abs();
+        println!("Force before: {}", before);
 
-        self.set_force(other.get_force() - v1.mul(self.get_mass()));
-        other.set_force(-self.get_force() + v2.mul(other.get_mass()));
+        let diff = self.get_speed() - other.get_speed();
+        let ratio = diff.div(other.get_mass() / self.get_mass());
+
+        let transfer = ratio.mul(other.get_mass());
+        let mut v1 = self.get_force() - transfer;
+        let mut v2 = other.get_force() + transfer;
+
+
+        self.set_force(v1);
+        other.set_force(v2);
+
+        let after = self.get_force().as_polar().0.abs() + other.get_force().as_polar().0.abs();
+        println!("Force after: {}", after);
+
+        println!("Diff: {}", before - after);
     }
 
     fn collision_with(&'a self, other: &'a impl Move) -> Vec<Collision> {

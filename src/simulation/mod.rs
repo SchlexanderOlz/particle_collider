@@ -64,6 +64,25 @@ fn move_particles(
     if !timer.0.tick(time.delta()).just_finished() {
         return;
     }
+
+    for (mut particle, mut transform) in &mut query {
+        let pos = particle.get_pos();
+
+        let force = particle.get_force();
+        if pos.x < -GAME_SIZE || pos.x > GAME_SIZE {
+            particle.set_force(Vector2D::new(-force.get_x(), force.get_y()));
+        }
+
+        if pos.y > GAME_SIZE || pos.y < -GAME_SIZE {
+            particle.set_force(Vector2D::new(force.get_x(), -force.get_y()));
+        }
+        particle.mov(tick_speed.0);
+        let pos = particle.get_pos();
+
+        transform.translation.x = pos.x;
+        transform.translation.y = pos.y;
+    }
+
     let view: Vec<_> = query.iter_mut().map(|x| RefCell::new(x.0)).collect();
 
     for i in 0..view.len() {
@@ -84,24 +103,6 @@ fn move_particles(
                 particle.borrow_mut().collide(other.borrow_mut().as_mut());
             }
         }
-    }
-
-    for (mut particle, mut transform) in &mut query {
-        let pos = particle.get_pos();
-
-        let force = particle.get_force();
-        if pos.x < -GAME_SIZE || pos.x > GAME_SIZE {
-            particle.set_force(Vector2D::new(-force.get_x(), force.get_y()));
-        }
-
-        if pos.y > GAME_SIZE || pos.y < -GAME_SIZE {
-            particle.set_force(Vector2D::new(force.get_x(), -force.get_y()));
-        }
-        particle.mov(tick_speed.0);
-        let pos = particle.get_pos();
-
-        transform.translation.x = pos.x;
-        transform.translation.y = pos.y;
     }
 }
 
